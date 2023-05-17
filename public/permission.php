@@ -1,4 +1,10 @@
 <?php
+require_once('config/config.php');
+if (!file_exists($GLOBALS['config']['global']['logDir'])) 
+{
+    mkdir($GLOBALS['config']['global']['logDir']);
+    chmod($GLOBALS['config']['global']['logDir'], 0775);
+}
 require_once('lib/web_data.php');
 require_once('lib/api_shared.php');
 require_once('lib/permission.php');
@@ -14,8 +20,11 @@ if ($REQUEST_DATA->Method !== 'post')
     die('Invalid Method');
 }
 
-file_put_contents('debug.json', json_encode($REQUEST_DATA) . "\n\n", FILE_APPEND);
-
+if ($GLOBALS['config']['global']['debug'] === true)
+{
+    file_put_contents($GLOBALS['config']['global']['logDir'] . '/requests.log', '[' .date('d.m.Y-H:i:s', time()) . '] ' . json_encode($REQUEST_DATA) . "\n", FILE_APPEND);
+    chmod($GLOBALS['config']['global']['logDir'] . '/requests.log', 0775);
+}
 switch ($REQUEST_DATA->getQuery('t'))
 {
     case 'cc':

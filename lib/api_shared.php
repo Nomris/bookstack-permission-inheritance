@@ -42,7 +42,12 @@ function sendRequest(string $path, string $method, mixed $body)
         error_log($error . '::' . json_encode($result));
     }
 
-    #file_put_contents('curl.log', "[$method]" . $path . ' >> ' . $result . "\n", FILE_APPEND);
+    
+    if ($GLOBALS['config']['global']['debug'] === true)
+    {
+        file_put_contents($GLOBALS['config']['global']['logDir'] . '/curl.log', '[' .date('d.m.Y-H:i:s', time()) . '] ' . "[$method] " . $path . ' >> ' . $result . "\n", FILE_APPEND);
+        chmod($GLOBALS['config']['global']['logDir'] . '/curl.log', 0775);
+    }
 
     curl_close($session);
 
