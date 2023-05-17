@@ -3,7 +3,7 @@ require_once('lib/web_data.php');
 require_once('lib/api_shared.php');
 require_once('lib/permission.php');
 
-global /*$shelves, $books, $chapters, $bookshelfMap,*/ $REQUEST_DATA;
+global $REQUEST_DATA;
 
 $REQUEST_DATA = new RequestData();
 
@@ -13,95 +13,6 @@ if ($REQUEST_DATA->Method !== 'post')
     error_log('Invalid Method "' . $REQUEST_DATA->Method . '"');
     die('Invalid Method');
 }
-
-/*
-$shelves = array();
-$books = array();
-$chapters = array();
-
-$bookshelfMap = array();
-$slugMap = array();
-
-foreach (sendRequest('api/shelves', 'GET', null)['data'] as $shelf)
-{
-    $shelfEntry = array(
-        'books' => array(),
-        'tags' => array()
-    );
-    $details = sendRequest('api/shelves/'. $shelf['id'], 'GET', null);
-    foreach($details['books'] as $book)
-    {
-        $shelfEntry['books'][count($shelfEntry['books'])] = $book['id'];
-
-        if (!isset($bookshelfMap[$book['id']])) $bookshelfMap[$book['id']] = array();
-        $bookshelfMap[$book['id']][count($bookshelfMap[$book['id']])] = $shelf['id'];
-    }
-    foreach($details['tags'] as $tag)
-    {
-        $shelfEntry['tags'][$tag['name']] = $tag['value'];
-    }
-
-    $shelves[$shelf['id']] = $shelfEntry;
-    $slugMap[$shelf['slug']] = array(
-        'type' => 'bookshelf',
-        'id' => $shelf['id']
-    );
-}
-
-foreach (sendRequest('api/books', 'GET', null)['data'] as $book)
-{
-    $books[$book['id']] = array(
-        'name' => $book['name'],
-        'tags' => array(),
-        'chapters' => array(),
-        'pages' => array()
-    );
-
-    foreach (sendRequest('api/books/' . $book['id'], 'GET', null)['tags'] as $tag)
-    {
-        $books[$book['id']]['tags'][$tag['name']] = $tag['value'];
-
-        foreach ($book['contents'] as $contentEntry)
-        {
-            switch ($contentEntry['type'])
-            {
-                case 'chapter': $books[$book['id']]['chapters'][] = $contentEntry['id']; break;
-                case 'page': $books[$book['id']]['pages'][] = $contentEntry['id']; break;
-            }
-        }
-    }
-
-    $slugMap[$book['slug']] = array(
-        'type' => 'book',
-        'id' => $book['id']
-    );
-}
-
-foreach (sendRequest('api/chapters', 'GET', null)['data'] as $chapter)
-{
-    $chapters[$chapter['id']] = array(
-        'name' => $chapter['name'],
-        'book_id' => $chapter['book_id'],
-        'tags' => array(),
-        'pages' => array()
-    );
-
-    foreach (sendRequest('api/chapters/' . $chapter['id'], 'GET', null)['tags'] as $tag)
-    {
-        $chapters[$chapter['id']]['tags'][$tag['name']] = $tag['value'];
-
-        foreach ($book['pages'] as $page)
-        {
-            $chapters[$chapter['id']]['pages'][] = $page['id'];
-        }
-    }
-    
-    $slugMap[$chapter['slug']] = array(
-        'type' => 'chapter',
-        'id' => $chapter['id']
-    );
-}
-*/
 
 file_put_contents('debug.json', json_encode($REQUEST_DATA) . "\n\n", FILE_APPEND);
 
@@ -128,7 +39,7 @@ switch ($REQUEST_DATA->getQuery('t'))
 
 function processContentChanged()
 {
-    global $REQUEST_DATA;// $bookshelfMap;
+    global $REQUEST_DATA;
 
     switch ($REQUEST_DATA->Content['event'])
     {
@@ -136,8 +47,7 @@ function processContentChanged()
             loadShelfData();
             $bookId = $REQUEST_DATA->Content['related_item']['id'];
             $shelfId = $GLOBALS['_l_data']['book_map'][$bookId][0];
-            //$shelfId = $bookshelfMap[$bookId][0];
-            
+
             updatePermissionBook($bookId, $shelfId, true);
             break;
 
@@ -223,44 +133,6 @@ function processPermissionChanged()
                 break;
         }
     }
-
-    /*
-    global $slugMap, $shelves, $books, $chapters;
-
-    if (isset($slugMap[$REQUEST_DATA->Content['related_item']['slug']]))
-    {
-
-        $slugEntry = $slugMap[$REQUEST_DATA->Content['related_item']['slug']];
-
-        switch ($slugEntry['type'])
-        {
-            case 'bookshelf':
-                foreach ($shelves[$slugEntry['id']]['books'] as $book) updatePermissionBook($book, $slugEntry['id'], false);
-                break;
-
-            case 'book':
-                            
-                foreach ($books[$slugEntry['id']]['chapters'] as $chapter)
-                {
-                    updatePermissionChapter($chapter, $slugEntry['id'], false);
-                }
-
-                foreach ($books[$slugEntry['id']]['pages'] as $page)
-                {
-                    updatePermissionPage($page, $slugEntry['id'], 0);
-                }
-
-                break;
-
-            case 'chapter':
-                foreach ($chapters[$slugEntry['id']]['pages'] as $page)
-                {
-                    updatePermissionPage($page, $slugEntry['id']['book_id'], $slugEntry['id']);
-                }
-                break;
-        }
-    }
-    */
 }
 
 function updatePermissionBook(int $bookId, int $shelfId, bool $cascade, array $permissions = null)
@@ -306,46 +178,6 @@ function updatePermissionBook(int $bookId, int $shelfId, bool $cascade, array $p
             }
         }
     }
-
-    /*
-    global $shelves, $books;
-
-    if (isset($shelves[$shelfId]['tags'][$GLOBALS['config']['bookstack']['permission']['tag']]))
-    {
-        $permissions['role_permissions'] = applyPermission($permissions['role_permissions'], $shelves[$shelfId]['tags'][$GLOBALS['config']['bookstack']['permission']['tag']], array (
-            'view' => false,
-            'create' => false,
-            'update' => false,
-            'delete' => false
-        ));
-    }
-
-    if (isset($shelves[$shelfId]['tags'][$GLOBALS['config']['bookstack']['permission']['ignoreFallbackTag']]))
-    {
-        $permissions['fallback_permissions']['inheriting'] = false;
-        $permissions['fallback_permissions']['view'] = false;
-        $permissions['fallback_permissions']['create'] = false;
-        $permissions['fallback_permissions']['update'] = false;
-        $permissions['fallback_permissions']['delete'] = false;
-    }
-
-    $permissions['owner'] = sendRequest('api/content-permissions/book/' . $bookId, 'GET', null)['owner'];
-    sendRequest('api/content-permissions/book/' . $bookId, 'PUT', $permissions);
-
-    if ($cascade)
-    {
-        foreach ($books[$bookId]['chapters'] as $chapter)
-        {
-            updatePermissionChapter($chapter, $bookId, $cascade);
-        }
-
-        foreach ($books[$bookId]['pages'] as $page)
-        {
-            updatePermissionPage($page, $bookId, 0);
-        }
-    }
-    */
-
 }
 
 function updatePermissionChapter(int $chapterId, int $bookId, bool $cascade, array $permissions = null)
@@ -386,42 +218,6 @@ function updatePermissionChapter(int $chapterId, int $bookId, bool $cascade, arr
             updatePermissionPage($page['id'], $bookId, $chapterId, $permissions);
         }
     }
-
-    /*
-    global $books, $chapters;
-
-    $permissions = sendRequest('api/content-permissions/book/' . $bookId, 'GET', null);
-            
-    if (isset($books[$bookId]['tags'][$GLOBALS['config']['bookstack']['permission']['tag']]))
-    {
-        $permissions['role_permissions'] = applyPermission($permissions['role_permissions'], $books[$bookId]['tags'][$GLOBALS['config']['bookstack']['permission']['tag']], array (
-            'view' => false,
-            'create' => false,
-            'update' => false,
-            'delete' => false
-        ));
-    }
-
-    if (isset($books[$bookId]['tags'][$GLOBALS['config']['bookstack']['permission']['ignoreFallbackTag']]))
-    {
-        $permissions['fallback_permissions']['inheriting'] = false;
-        $permissions['fallback_permissions']['view'] = false;
-        $permissions['fallback_permissions']['create'] = false;
-        $permissions['fallback_permissions']['update'] = false;
-        $permissions['fallback_permissions']['delete'] = false;
-    }
-    
-    $permissions['owner'] = sendRequest('api/content-permissions/chapter/' . $chapterId, 'GET', null)['owner'];
-    sendRequest('api/content-permissions/chapter/' . $chapterId, 'PUT', $permissions);
-
-    if ($cascade)
-    {
-        foreach ($chapters[$chapterId]['pages'] as $page)
-        {
-            updatePermissionPage($page, $bookId, $chapterId);
-        }
-    }
-    */
 }
 
 function updatePermissionPage(int $pageId, int $bookId, int $chapterId, array $permissions = null)
@@ -485,50 +281,6 @@ function updatePermissionPage(int $pageId, int $bookId, int $chapterId, array $p
 
     $permissions['owner'] = sendRequest('api/content-permissions/page/' . $pageId, 'GET', null)['owner'];
     sendRequest('api/content-permissions/page/' . $pageId, 'PUT', $permissions);
-
-    /*
-    global $books, $chapters;
-
-    $permissions = array();
-    if ($chapterId > 0)
-    {
-        $permissions = sendRequest('api/content-permissions/chapter/' . $chapterId, 'GET', null);
-        if (isset($chapters[$chapterId]['tags'][$GLOBALS['config']['bookstack']['permission']['tag']]))
-        {
-            $permissions['role_permissions'] = applyPermission($permissions['role_permissions'], $chapters[$chapterId]['tags'][$GLOBALS['config']['bookstack']['permission']['tag']], array (
-                'view' => false,
-                'create' => false,
-                'update' => false,
-                'delete' => false
-            ));
-        }
-    }
-    else
-    {
-        $permissions = sendRequest('api/content-permissions/book/' . $bookId, 'GET', null);
-        if (isset($books[$bookId]['tags'][$GLOBALS['config']['bookstack']['permission']['tag']]))
-        {
-            $permissions['role_permissions'] = applyPermission($permissions['role_permissions'], $books[$bookId]['tags'][$GLOBALS['config']['bookstack']['permission']['tag']], array (
-                'view' => false,
-                'create' => false,
-                'update' => false,
-                'delete' => false
-            ));
-        }
-    }
-
-    if (isset($books[$bookId]['tags'][$GLOBALS['config']['bookstack']['permission']['ignoreFallbackTag']]))
-    {
-        $permissions['fallback_permissions']['inheriting'] = false;
-        $permissions['fallback_permissions']['view'] = false;
-        $permissions['fallback_permissions']['create'] = false;
-        $permissions['fallback_permissions']['update'] = false;
-        $permissions['fallback_permissions']['delete'] = false;
-    }
-
-    $permissions['owner'] = sendRequest('api/content-permissions/page/' . $pageId, 'GET', null)['owner'];
-    sendRequest('api/content-permissions/page/' . $pageId, 'PUT', $permissions);
-    */
 }
 
 
