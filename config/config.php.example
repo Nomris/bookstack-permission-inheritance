@@ -2,7 +2,7 @@
 $GLOBALS['config'] = array(
     'global' => array(
         'debug' => false,
-        'logDir' => $_SERVER['DOCUMENT_ROOT'] . '../log/'
+        'logDir' => $_SERVER['DOCUMENT_ROOT'] . '/../log/'
     ),
     'bookstack' => array(
         'apiRateLimit' => '180',
