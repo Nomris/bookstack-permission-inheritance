@@ -11,6 +11,7 @@ require_once('lib/permission.php');
 
 global $REQUEST_DATA;
 
+$GLOBALS['_l_data'] = array();
 $REQUEST_DATA = new RequestData();
 
 if ($REQUEST_DATA->Method !== 'post') 
@@ -291,9 +292,6 @@ function updatePermissionPage(int $pageId, int $bookId, int $chapterId, array $p
     $permissions['owner'] = sendRequest('api/content-permissions/page/' . $pageId, 'GET', null)['owner'];
     sendRequest('api/content-permissions/page/' . $pageId, 'PUT', $permissions);
 }
-
-
-$GLOBALS['_l_data'] = array();
 
 function loadShelfData()
 {
